@@ -35,11 +35,35 @@
     'S3', 'EC2', 'ECS', 'EKS', 'CloudFormation',
     'Datadog', 'Grafana', 'Prometheus', 'New Relic',
     'Hadoop', 'Spark', 'Airflow', 'dbt', 'Snowflake', 'BigQuery',
-    'Power BI', 'Tableau', 'Looker'
+    'Power BI', 'Tableau', 'Looker',
+    'Visual Studio', 'VS Code', 'IntelliJ', 'Eclipse',
+    'OOP', 'Object-Oriented Programming', 'Design Patterns',
+    'Data Structures', 'Algorithms', 'Multithreading', 'Concurrency',
+    'Windows', 'macOS', 'Unix',
+    'TCP/IP', 'HTTP', 'HTTPS', 'FTP', 'SSH',
+    'XML', 'JSON', 'YAML', 'Protobuf',
+    'CMake', 'Make', 'MSBuild', 'Gradle', 'Maven',
+    'Fixed Income', 'Trading', 'Finance',
+    'Problem Solving', 'Troubleshooting',
+    'English', 'Communication'
   ];
 
   function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function makeSkillPattern(skill) {
+    const escaped = escapeRegex(skill);
+    const endsWithSpecial = /[^a-zA-Z0-9]$/.test(skill);
+    const startsWithSpecial = /^[^a-zA-Z0-9]/.test(skill);
+
+    if (skill.length <= 2) {
+      return new RegExp('(?:^|[\\s,;/|(])' + escaped + '(?=[\\s,;/|).:\\-]|$)', 'i');
+    }
+
+    const left = startsWithSpecial ? '(?:^|[\\s,;/|(])' : '\\b';
+    const right = endsWithSpecial ? '(?=[\\s,;/|).:\\-]|$)' : '\\b';
+    return new RegExp(left + escaped + right, 'i');
   }
 
   function extractJobSkills(text) {
@@ -50,27 +74,25 @@
       const key = skill.toLowerCase();
       if (seen.has(key)) continue;
 
-      let pattern;
-      if (skill.length === 1) {
-        pattern = new RegExp('(?:^|[\\s,;/|(])' + escapeRegex(skill) + '(?:[\\s,;/|)]|$)', 'i');
-      } else {
-        pattern = new RegExp('\\b' + escapeRegex(skill) + '\\b', 'i');
-      }
+      const pattern = makeSkillPattern(skill);
 
       if (pattern.test(text)) {
         seen.add(key);
 
         const yearsPatterns = [
-          new RegExp('(\\d+)\\+?\\s*(?:years?|yrs?)\\s+(?:of\\s+)?(?:experience\\s+(?:with|in)\\s+)?' + escapeRegex(skill), 'i'),
-          new RegExp(escapeRegex(skill) + '\\s*[:\\-]?\\s*(\\d+)\\+?\\s*(?:years?|yrs?)', 'i'),
-          new RegExp('(\\d+)\\+?\\s*(?:years?|yrs?)\\s+' + escapeRegex(skill), 'i'),
+          new RegExp('(\\d{1,2})\\+?\\s*(?:years?|yrs?)\\s+(?:of\\s+)?(?:experience\\s+(?:with|in)\\s+)?' + escapeRegex(skill), 'i'),
+          new RegExp(escapeRegex(skill) + '\\s*[:\\-]?\\s*(\\d{1,2})\\+?\\s*(?:years?|yrs?)', 'i'),
+          new RegExp('(\\d{1,2})\\+?\\s*(?:years?|yrs?)\\s+' + escapeRegex(skill), 'i'),
         ];
 
         let requiredYears = 0;
         for (const yp of yearsPatterns) {
           const m = text.match(yp);
           if (m) {
-            requiredYears = parseInt(m[1]);
+            const parsed = parseInt(m[1]);
+            if (parsed > 0 && parsed <= 50) {
+              requiredYears = parsed;
+            }
             break;
           }
         }
@@ -140,15 +162,29 @@
       background: ${bgColor};
       border: 2px solid ${color};
       border-radius: 16px;
-      padding: 12px 18px;
+      padding: 14px 20px;
       cursor: pointer;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       transition: transform 0.15s;
       user-select: none;
-      min-width: 80px;
+      min-width: 120px;
+      max-width: 220px;
       text-align: center;
     `;
+
+    const topMissing = result.missing.slice(0, 3);
+    let missingHtml = '';
+    if (topMissing.length > 0) {
+      missingHtml = `
+        <div style="margin-top: 6px; border-top: 1px solid ${color}33; padding-top: 6px; text-align: left;">
+          ${topMissing.map(s =>
+            `<div style="font-size: 10px; color: #dc2626; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">&#10007; ${esc(s.name)}</div>`
+          ).join('')}
+          ${result.missing.length > 3 ? `<div style="font-size: 10px; color: #999;">+${result.missing.length - 3} more</div>` : ''}
+        </div>
+      `;
+    }
 
     badge.innerHTML = `
       <div style="font-size: 28px; font-weight: 700; color: ${color}; line-height: 1.2; white-space: nowrap;">
@@ -157,6 +193,7 @@
       <div style="font-size: 11px; color: #666; white-space: nowrap;">
         ${total > 0 ? `${result.matched.length + result.partial.length}/${total} skills` : 'No skills found'}
       </div>
+      ${missingHtml}
     `;
 
     badge.onmouseenter = () => badge.style.transform = 'scale(1.05)';
@@ -187,7 +224,7 @@
       border-radius: 12px;
       padding: 16px;
       width: 340px;
-      max-height: 420px;
+      max-height: 520px;
       overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0,0,0,0.18);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
