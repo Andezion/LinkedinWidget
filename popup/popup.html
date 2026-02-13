@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>LinkedIn Job Match</h1>
+
+    <section class="add-skill">
+      <h2>Add Skill</h2>
+      <form id="skillForm">
+        <input type="text" id="skillName" placeholder="Technology (e.g. React, Python)" required>
+        <input type="number" id="skillYears" placeholder="Years" min="0" max="50" step="0.5" required>
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+    <section class="upload-cv">
+      <h2>Or Upload CV (PDF)</h2>
+      <label class="upload-btn" for="cvFile">Choose PDF</label>
+      <input type="file" id="cvFile" accept=".pdf" hidden>
+      <span id="cvStatus"></span>
+    </section>
+
+    <section class="skills-list">
+      <h2>Your Skills <span id="skillCount">(0)</span></h2>
+      <div id="skills"></div>
+      <button id="clearAll" class="clear-btn" hidden>Clear All</button>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
