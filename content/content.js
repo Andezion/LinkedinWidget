@@ -50,7 +50,13 @@
       const key = skill.toLowerCase();
       if (seen.has(key)) continue;
 
-      const pattern = new RegExp('\\b' + escapeRegex(skill) + '\\b', 'i');
+      let pattern;
+      if (skill.length === 1) {
+        pattern = new RegExp('(?:^|[\\s,;/|(])' + escapeRegex(skill) + '(?:[\\s,;/|)]|$)', 'i');
+      } else {
+        pattern = new RegExp('\\b' + escapeRegex(skill) + '\\b', 'i');
+      }
+
       if (pattern.test(text)) {
         seen.add(key);
 
@@ -91,15 +97,9 @@
       if (!userSkill) {
         missing.push(job);
       } else if (job.requiredYears > 0 && userSkill.years < job.requiredYears) {
-        partial.push({
-          ...job,
-          userYears: userSkill.years,
-        });
+        partial.push({ ...job, userYears: userSkill.years });
       } else {
-        matched.push({
-          ...job,
-          userYears: userSkill.years,
-        });
+        matched.push({ ...job, userYears: userSkill.years });
       }
     }
 
@@ -111,7 +111,7 @@
   }
 
   function scoreColor(score) {
-    const hue = score * 1.2; 
+    const hue = score * 1.2;
     return `hsl(${hue}, 80%, 45%)`;
   }
 
@@ -130,6 +130,7 @@
 
     const color = scoreColor(result.score);
     const bgColor = scoreBgColor(result.score);
+    const total = result.matched.length + result.partial.length + result.missing.length;
 
     badge.style.cssText = `
       position: fixed;
@@ -145,14 +146,16 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       transition: transform 0.15s;
       user-select: none;
+      min-width: 80px;
+      text-align: center;
     `;
 
     badge.innerHTML = `
-      <div style="font-size: 28px; font-weight: 700; color: ${color}; text-align: center;">
+      <div style="font-size: 28px; font-weight: 700; color: ${color}; line-height: 1.2; white-space: nowrap;">
         ${result.score}%
       </div>
-      <div style="font-size: 11px; color: #666; text-align: center;">
-        ${result.matched.length + result.partial.length}/${result.matched.length + result.partial.length + result.missing.length} skills
+      <div style="font-size: 11px; color: #666; white-space: nowrap;">
+        ${total > 0 ? `${result.matched.length + result.partial.length}/${total} skills` : 'No skills found'}
       </div>
     `;
 
@@ -172,6 +175,7 @@
     panel.id = PANEL_ID;
 
     const color = scoreColor(result.score);
+    const total = result.matched.length + result.partial.length + result.missing.length;
 
     panel.style.cssText = `
       position: fixed;
@@ -182,57 +186,64 @@
       border: 1px solid #e0e0e0;
       border-radius: 12px;
       padding: 16px;
-      width: 320px;
+      width: 340px;
       max-height: 420px;
       overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0,0,0,0.18);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 13px;
       color: #333;
+      line-height: 1.5;
     `;
 
     let html = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
         <strong style="font-size: 15px; color: ${color};">Match: ${result.score}%</strong>
-        <span id="ljm-close" style="cursor: pointer; font-size: 18px; color: #999;">&times;</span>
+        <span id="ljm-close" style="cursor: pointer; font-size: 20px; color: #999; padding: 0 4px;">&times;</span>
       </div>
     `;
 
     if (result.matched.length > 0) {
-      html += `<div style="margin-bottom: 10px;"><strong style="color: #16a34a;">Matched:</strong></div>`;
+      html += `<div style="margin-bottom: 6px;"><strong style="color: #16a34a;">Matched (${result.matched.length}):</strong></div>`;
       for (const s of result.matched) {
-        html += `<div style="padding: 4px 0; color: #16a34a;">
-          &#10003; ${esc(s.name)}
-          <span style="color: #999; font-size: 11px; margin-left: 4px;">
-            (you: ${s.userYears}y${s.requiredYears ? ` / need: ${s.requiredYears}y` : ''})
+        html += `<div style="padding: 3px 0; color: #16a34a; display: flex; align-items: baseline; gap: 6px;">
+          <span>&#10003;</span>
+          <span>${esc(s.name)}
+            <span style="color: #999; font-size: 11px;">
+              (you: ${s.userYears}y${s.requiredYears ? ` / need: ${s.requiredYears}y` : ''})
+            </span>
           </span>
         </div>`;
       }
     }
 
     if (result.partial.length > 0) {
-      html += `<div style="margin-top: 8px; margin-bottom: 10px;"><strong style="color: #d97706;">Partial (less experience):</strong></div>`;
+      html += `<div style="margin-top: 10px; margin-bottom: 6px;"><strong style="color: #d97706;">Partial (${result.partial.length}):</strong></div>`;
       for (const s of result.partial) {
-        html += `<div style="padding: 4px 0; color: #d97706;">
-          &#9888; ${esc(s.name)}
-          <span style="color: #999; font-size: 11px; margin-left: 4px;">
-            (you: ${s.userYears}y / need: ${s.requiredYears}y)
+        html += `<div style="padding: 3px 0; color: #d97706; display: flex; align-items: baseline; gap: 6px;">
+          <span>&#9888;</span>
+          <span>${esc(s.name)}
+            <span style="color: #999; font-size: 11px;">
+              (you: ${s.userYears}y / need: ${s.requiredYears}y)
+            </span>
           </span>
         </div>`;
       }
     }
 
     if (result.missing.length > 0) {
-      html += `<div style="margin-top: 8px; margin-bottom: 10px;"><strong style="color: #dc2626;">Missing:</strong></div>`;
+      html += `<div style="margin-top: 10px; margin-bottom: 6px;"><strong style="color: #dc2626;">Missing (${result.missing.length}):</strong></div>`;
       for (const s of result.missing) {
-        html += `<div style="padding: 4px 0; color: #dc2626;">
-          &#10007; ${esc(s.name)}
-          ${s.requiredYears ? `<span style="color: #999; font-size: 11px;">(${s.requiredYears}y required)</span>` : ''}
+        html += `<div style="padding: 3px 0; color: #dc2626; display: flex; align-items: baseline; gap: 6px;">
+          <span>&#10007;</span>
+          <span>${esc(s.name)}
+            ${s.requiredYears ? `<span style="color: #999; font-size: 11px;">(${s.requiredYears}y required)</span>` : ''}
+          </span>
         </div>`;
       }
     }
 
-    if (result.matched.length === 0 && result.partial.length === 0 && result.missing.length === 0) {
+    if (total === 0) {
       html += `<div style="color: #999; text-align: center; padding: 20px 0;">
         No tech skills detected in this job posting.<br>
         Try adding skills in the extension popup.
@@ -256,11 +267,20 @@
       '.jobs-description__content',
       '.jobs-box__html-content',
       '.jobs-description-content__text',
-      '.jobs-unified-top-card',
       '#job-details',
+      '.jobs-search__job-details--container',
+      '.jobs-search__job-details',
+      '.job-details-module',
+      '.jobs-details__main-content',
+      '.jobs-details-top-card',
+      '.jobs-unified-top-card',
       '.job-details-jobs-unified-top-card__job-insight',
       '[class*="jobs-description"]',
       '[class*="job-details"]',
+      '[class*="jobs-details"]',
+      'article[class*="jobs"]',
+      '.scaffold-layout__detail',
+      '.jobs-search__right-rail',
     ];
 
     for (const sel of selectors) {
@@ -274,6 +294,25 @@
     return main.textContent;
   }
 
+  function waitForJobDescription(callback, maxAttempts) {
+    let attempts = 0;
+    const max = maxAttempts || 10;
+
+    function tryFind() {
+      attempts++;
+      const text = getJobDescription();
+      if (text && text.length > 200) {
+        callback(text);
+      } else if (attempts < max) {
+        setTimeout(tryFind, 1000);
+      } else {
+        callback(text || '');
+      }
+    }
+
+    tryFind();
+  }
+
   function analyze() {
     chrome.storage.local.get('skills', (data) => {
       const userSkills = data.skills || [];
@@ -283,38 +322,69 @@
         return;
       }
 
-      const jobText = getJobDescription();
-      const jobSkills = extractJobSkills(jobText);
-      const result = calculateMatch(userSkills, jobSkills);
-      renderBadge(result);
+      waitForJobDescription((jobText) => {
+        const jobSkills = extractJobSkills(jobText);
+        const result = calculateMatch(userSkills, jobSkills);
+        renderBadge(result);
+      });
     });
   }
 
+  function cleanup() {
+    const oldBadge = document.getElementById(BADGE_ID);
+    const oldPanel = document.getElementById(PANEL_ID);
+    if (oldBadge) oldBadge.remove();
+    if (oldPanel) oldPanel.remove();
+  }
+
   let lastUrl = location.href;
+  let lastJobId = new URLSearchParams(location.search).get('currentJobId');
+  let analyzeTimer = null;
+
+  function getJobId() {
+    const param = new URLSearchParams(location.search).get('currentJobId');
+    if (param) return param;
+    const viewMatch = location.pathname.match(/\/jobs\/view\/(\d+)/);
+    if (viewMatch) return viewMatch[1];
+    return null;
+  }
 
   function checkAndRun() {
-    if (location.href !== lastUrl) {
-      lastUrl = location.href;
-      const oldBadge = document.getElementById(BADGE_ID);
-      const oldPanel = document.getElementById(PANEL_ID);
-      if (oldBadge) oldBadge.remove();
-      if (oldPanel) oldPanel.remove();
-    }
+    const currentUrl = location.href;
+    const currentJobId = getJobId();
+
+    if (currentUrl === lastUrl && currentJobId === lastJobId) return;
+
+    lastUrl = currentUrl;
+    lastJobId = currentJobId;
+
+    if (analyzeTimer) clearTimeout(analyzeTimer);
+
+    cleanup();
 
     if (location.href.includes('/jobs/')) {
-      setTimeout(analyze, 1500);
+      analyzeTimer = setTimeout(analyze, 800);
     }
   }
 
   checkAndRun();
 
   const observer = new MutationObserver(() => {
-    if (location.href !== lastUrl) {
-      checkAndRun();
-    }
+    checkAndRun();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
 
   window.addEventListener('popstate', checkAndRun);
+
+  const origPushState = history.pushState;
+  const origReplaceState = history.replaceState;
+  history.pushState = function () {
+    origPushState.apply(this, arguments);
+    setTimeout(checkAndRun, 100);
+  };
+  history.replaceState = function () {
+    origReplaceState.apply(this, arguments);
+    setTimeout(checkAndRun, 100);
+  };
 })();
