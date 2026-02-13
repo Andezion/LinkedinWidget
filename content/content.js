@@ -169,19 +169,39 @@
       transition: transform 0.15s;
       user-select: none;
       min-width: 120px;
-      max-width: 220px;
+      max-width: 240px;
+      max-height: 60vh;
+      overflow-y: auto;
       text-align: center;
     `;
 
-    const topMissing = result.missing.slice(0, 3);
     let missingHtml = '';
-    if (topMissing.length > 0) {
+    if (result.missing.length > 0) {
       missingHtml = `
         <div style="margin-top: 6px; border-top: 1px solid ${color}33; padding-top: 6px; text-align: left;">
-          ${topMissing.map(s =>
+          ${result.missing.map(s =>
             `<div style="font-size: 10px; color: #dc2626; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">&#10007; ${esc(s.name)}</div>`
           ).join('')}
-          ${result.missing.length > 3 ? `<div style="font-size: 10px; color: #999;">+${result.missing.length - 3} more</div>` : ''}
+        </div>
+      `;
+    }
+    let partialHtml = '';
+    if (result.partial.length > 0) {
+      partialHtml = `
+        <div style="margin-top: 4px; border-top: 1px solid ${color}33; padding-top: 4px; text-align: left;">
+          ${result.partial.map(s =>
+            `<div style="font-size: 10px; color: #d97706; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">&#9888; ${esc(s.name)} (${s.userYears}y/${s.requiredYears}y)</div>`
+          ).join('')}
+        </div>
+      `;
+    }
+    let matchedHtml = '';
+    if (result.matched.length > 0) {
+      matchedHtml = `
+        <div style="margin-top: 4px; border-top: 1px solid ${color}33; padding-top: 4px; text-align: left;">
+          ${result.matched.map(s =>
+            `<div style="font-size: 10px; color: #16a34a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">&#10003; ${esc(s.name)}</div>`
+          ).join('')}
         </div>
       `;
     }
@@ -193,6 +213,8 @@
       <div style="font-size: 11px; color: #666; white-space: nowrap;">
         ${total > 0 ? `${result.matched.length + result.partial.length}/${total} skills` : 'No skills found'}
       </div>
+      ${matchedHtml}
+      ${partialHtml}
       ${missingHtml}
     `;
 
