@@ -177,22 +177,62 @@ const KNOWN_SKILLS = [
   'S3', 'EC2', 'ECS', 'EKS', 'CloudFormation',
   'Datadog', 'Grafana', 'Prometheus', 'New Relic',
   'Hadoop', 'Spark', 'Airflow', 'dbt', 'Snowflake', 'BigQuery',
-  'Power BI', 'Tableau', 'Looker'
+  'Power BI', 'Tableau', 'Looker',
+  'Visual Studio', 'VS Code', 'IntelliJ', 'Eclipse',
+  'OOP', 'Object-Oriented Programming', 'Design Patterns',
+  'Data Structures', 'Algorithms', 'Multithreading', 'Concurrency',
+  'Windows', 'macOS', 'Unix',
+  'TCP/IP', 'HTTP', 'HTTPS', 'FTP', 'SSH',
+  'XML', 'JSON', 'YAML', 'Protobuf',
+  'CMake', 'Make', 'MSBuild', 'Gradle', 'Maven',
+  'Fixed Income', 'Trading', 'Finance',
+  'Problem Solving', 'Troubleshooting',
+  'English', 'Communication'
 ];
+
+function makeSkillPattern(skill) {
+  const escaped = escapeRegex(skill);
+  const endsWithSpecial = /[^a-zA-Z0-9]$/.test(skill);
+  const startsWithSpecial = /^[^a-zA-Z0-9]/.test(skill);
+
+  if (skill.length <= 2) {
+    return new RegExp('(?:^|[\\s,;/|(])' + escaped + '(?=[\\s,;/|).:\\-]|$)', 'i');
+  }
+
+  const left = startsWithSpecial ? '(?:^|[\\s,;/|(])' : '\\b';
+  const right = endsWithSpecial ? '(?=[\\s,;/|).:\\-]|$)' : '\\b';
+  return new RegExp(left + escaped + right, 'i');
+}
 
 function extractSkillsFromText(text) {
   const found = [];
-  const normalized = text.toLowerCase();
+  const seen = new Set();
 
   for (const skill of KNOWN_SKILLS) {
-    const pattern = new RegExp('\\b' + escapeRegex(skill) + '\\b', 'i');
-    if (pattern.test(text) || normalized.includes(skill.toLowerCase())) {
-      const yearsPattern = new RegExp(
-        escapeRegex(skill) + '[^.]*?(\\d+)\\+?\\s*(?:years?|yrs?|\\+)',
-        'i'
-      );
-      const yearsMatch = text.match(yearsPattern);
-      const years = yearsMatch ? parseInt(yearsMatch[1]) : 0;
+    const key = skill.toLowerCase();
+    if (seen.has(key)) continue;
+
+    const pattern = makeSkillPattern(skill);
+    if (pattern.test(text)) {
+      seen.add(key);
+
+      const yearsPatterns = [
+        new RegExp('(\\d{1,2})\\+?\\s*(?:years?|yrs?)\\s+(?:of\\s+)?(?:experience\\s+(?:with|in)\\s+)?' + escapeRegex(skill), 'i'),
+        new RegExp(escapeRegex(skill) + '\\s*[:\\-]?\\s*(\\d{1,2})\\+?\\s*(?:years?|yrs?)', 'i'),
+        new RegExp('(\\d{1,2})\\+?\\s*(?:years?|yrs?)\\s+' + escapeRegex(skill), 'i'),
+      ];
+
+      let years = 0;
+      for (const yp of yearsPatterns) {
+        const m = text.match(yp);
+        if (m) {
+          const parsed = parseInt(m[1]);
+          if (parsed > 0 && parsed <= 50) {
+            years = parsed;
+          }
+          break;
+        }
+      }
 
       found.push({ name: skill, years });
     }
