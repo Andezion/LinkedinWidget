@@ -345,11 +345,13 @@
     for (const sel of selectors) {
       const el = document.querySelector(sel);
       if (el && el.textContent.trim().length > 50) {
+        console.log('LJM: Found job description with selector:', sel, 'length:', el.textContent.trim().length);
         return el.textContent;
       }
     }
 
     const main = document.querySelector('main') || document.body;
+    console.log('LJM: Using fallback selector, length:', main.textContent.length);
     return main.textContent;
   }
 
@@ -373,17 +375,23 @@
   }
 
   function analyze() {
+    console.log('LJM: Starting analysis');
     chrome.storage.local.get('skills', (data) => {
       const userSkills = data.skills || [];
+      console.log('LJM: User skills:', userSkills);
 
       if (userSkills.length === 0) {
+        console.log('LJM: No user skills, rendering 0% badge');
         renderBadge({ score: 0, matched: [], missing: [], partial: [] });
         return;
       }
 
       waitForJobDescription((jobText) => {
+        console.log('LJM: Job text length:', jobText.length);
         const jobSkills = extractJobSkills(jobText);
+        console.log('LJM: Extracted job skills:', jobSkills);
         const result = calculateMatch(userSkills, jobSkills);
+        console.log('LJM: Match result:', result);
         renderBadge(result);
       });
     });
@@ -412,6 +420,8 @@
     const currentUrl = location.href;
     const currentJobId = getJobId();
 
+    console.log('LJM: checkAndRun called, URL:', currentUrl, 'JobID:', currentJobId);
+
     if (currentUrl === lastUrl && currentJobId === lastJobId) return;
 
     lastUrl = currentUrl;
@@ -422,7 +432,10 @@
     cleanup();
 
     if (location.href.includes('/jobs/')) {
+      console.log('LJM: On jobs page, scheduling analysis');
       analyzeTimer = setTimeout(analyze, 800);
+    } else {
+      console.log('LJM: Not on jobs page');
     }
   }
 
