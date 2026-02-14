@@ -396,8 +396,8 @@
     if (oldPanel) oldPanel.remove();
   }
 
-  let lastUrl = location.href;
-  let lastJobId = new URLSearchParams(location.search).get('currentJobId');
+  let lastUrl = '';
+  let lastJobId = null;
   let analyzeTimer = null;
 
   function getJobId() {
