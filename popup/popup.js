@@ -105,45 +105,21 @@ cvFile.addEventListener('change', async (e) => {
 });
 
 async function extractTextFromPDF(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const bytes = new Uint8Array(reader.result);
-        let text = '';
+  const pdfjsLib = await import(chrome.runtime.getURL('lib/pdf.min.mjs'));
+  pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('lib/pdf.worker.min.mjs');
 
-        const decoder = new TextDecoder('utf-8', { fatal: false });
-        const raw = decoder.decode(bytes);
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
-        const btBlocks = raw.match(/BT[\s\S]*?ET/g) || [];
-        for (const block of btBlocks) {
-          const tjMatches = block.match(/\(([^)]*)\)\s*Tj/g) || [];
-          for (const m of tjMatches) {
-            const inner = m.match(/\(([^)]*)\)/);
-            if (inner) text += inner[1] + ' ';
-          }
-          const tjArrays = block.match(/\[([^\]]*)\]\s*TJ/g) || [];
-          for (const m of tjArrays) {
-            const strings = m.match(/\(([^)]*)\)/g) || [];
-            for (const s of strings) {
-              const inner = s.match(/\(([^)]*)\)/);
-              if (inner) text += inner[1];
-            }
-            text += ' ';
-          }
-        }
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items.map(item => item.str).join(' ');
+    text += pageText + '\n';
+  }
 
-        const readable = raw.match(/[\w\s.+#]{3,}/g) || [];
-        text += ' ' + readable.join(' ');
-
-        resolve(text);
-      } catch (e) {
-        reject(e);
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
-  });
+  return text;
 }
 
 const KNOWN_SKILLS = [
